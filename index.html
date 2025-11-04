@@ -1,109 +1,152 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
+<meta charset="UTF-AR">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Chat Twitch Overlay - nomundodejupiter</title>
+<!-- 1. Carregando a biblioteca TMI.js (conexão direta com a Twitch) -->
+<script src="https://cdn.jsdelivr.net/npm/tmi.js/dist/tmi.min.js"></script>
 <style>
 body {
-  margin: 0;
-  background: transparent;
-  font-family: "Inter", Arial, sans-serif;
-  overflow: hidden;
+  margin: 0;
+  background: transparent; /* Fundo transparente é essencial para o overlay */
+  font-family: "Inter", Arial, sans-serif;
+  overflow: hidden; /* Evita barras de rolagem */
 }
 
 #chat {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  display: flex;
-  flex-direction: column-reverse;
-  padding: 10px;
-  gap: 6px;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column-reverse; /* Faz as novas mensagens aparecerem embaixo e empurrarem as antigas para cima */
+  padding: 10px;
+  gap: 6px;
+  box-sizing: border-box; /* Garante que o padding não afete a largura total */
 }
 
 .msg {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 12px;
-  border-radius: 14px;
-  color: white;
-  font-size: 14px;
-  max-width: 85%;
-  word-wrap: break-word;
-  animation: fadeIn 0.3s ease;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 14px;
+  color: white;
+  font-size: 14px;
+  max-width: 85%;
+  word-wrap: break-word; /* Quebra palavras longas */
+  animation: fadeIn 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  /* Garante que a mensagem apareça no canto inferior esquerdo */
+  align-self: flex-start; 
 }
 
 .msg .username {
-  font-weight: 600;
+  font-weight: 600;
 }
 
 .msg .heart {
-  font-size: 14px;
-  margin-left: 3px;
+  font-size: 14px;
+  margin-left: 3px;
 }
 
+/* --- CUSTOMIZAÇÃO DAS CORES --- */
+/* Você pode alterar, adicionar ou remover cores aqui */
 .color-1 { background: #ff7eb9; }
 .color-2 { background: #7afcff; }
-.color-3 { background: #feff9c; color: #333; }
+.color-3 { background: #feff9c; color: #333; } /* Cor com texto escuro */
 .color-4 { background: #ff65a3; }
-.color-5 { background: #fff740; color: #333; }
+.color-5 { background: #fff740; color: #333; } /* Cor com texto escuro */
 
+/* Animação de entrada */
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
+/* Animação de saída */
 @keyframes fadeOut {
-  from { opacity: 1; }
-  to { opacity: 0; transform: translateY(10px); }
+  from { opacity: 1; }
+  to { opacity: 0; transform: translateY(10px); }
 }
 </style>
 </head>
 <body>
+<!-- O container onde as mensagens do chat serão adicionadas -->
 <div id="chat"></div>
 
 <script>
-// Nome do canal da Twitch
-const CHANNEL = "nomundodejupiter";
+// --- PONTO PRINCIPAL DE CUSTOMIZAÇÃO ---
+// Coloque o nome do seu canal da Twitch aqui, em letras minúsculas.
+const CHANNEL = "nomundodejupiter"; // <--- MUDE AQUI para o seu canal
+
 const chat = document.getElementById("chat");
 
-// Função para adicionar mensagens
+// Função para adicionar mensagens na tela (NÃO MUDOU)
 function addMessage(user, text) {
-  const colorIndex = Math.floor(Math.random() * 5) + 1;
-  const div = document.createElement("div");
-  div.className = `msg color-${colorIndex}`;
-  div.innerHTML = `<span class="username">${user}</span><span class="heart">❤️</span>: ${text}`;
-  chat.prepend(div);
+  // Escolhe uma das 5 classes de cor (color-1 a color-5) aleatoriamente.
+  const colorIndex = Math.floor(Math.random() * 5) + 1;
+  const div = document.createElement("div");
+  div.className = `msg color-${colorIndex}`;
 
-  setTimeout(() => {
-    div.style.animation = "fadeOut 0.5s forwards";
-    setTimeout(() => div.remove(), 500);
-  }, 30000);
+  // Define o conteúdo da mensagem (Nome + ícone + texto)
+  div.innerHTML = `<span class="username">${user}</span><span class="heart">❤️</span>: ${text}`;
+  
+  // Adiciona a nova mensagem no chat
+  chat.prepend(div);
+
+  // --- CUSTOMIZAÇÃO DE TEMPO ---
+  // Define quanto tempo a mensagem fica na tela (em milissegundos)
+  // Atualmente: 30000ms = 30 segundos
+  setTimeout(() => {
+    // Inicia a animação de saída
+    div.style.animation = "fadeOut 0.5s forwards";
+    // Remove o elemento da tela após a animação de saída (500ms)
+    setTimeout(() => div.remove(), 500);
+  }, 30000); // <--- MUDE AQUI para o tempo total que a mensagem fica visível
 }
 
-// Conexão via relay (sem WebSocket direto)
-async function fetchChat() {
-  try {
-    const res = await fetch(`https://decapi.me/twitch/chatters/${CHANNEL}`);
-    const data = await res.text();
-    console.log("Conectado ao relay:", data);
-  } catch (e) {
-    console.error("Erro de conexão:", e);
-  }
-}
 
-// Conexão com EventSub relay
-const evtSource = new EventSource(`https://twitch-chat-relay.vercel.app/${CHANNEL}`);
+// --- CONEXÃO TMI.js (Versão Limpa) ---
 
-evtSource.onmessage = function(event) {
-  const msgData = JSON.parse(event.data);
-  addMessage(msgData.username, msgData.message);
-};
+// 1. Configura o cliente TMI.js para conectar anonimamente
+const client = new tmi.Client({
+	options: { debug: false },
+	connection: {
+		secure: true,
+		reconnect: true
+	},
+	channels: [ CHANNEL ]
+});
 
-fetchChat();
+// 2. Tenta se conectar ao chat
+client.connect().catch(console.error);
+
+// 3. O que fazer quando a conexão for bem-sucedida
+client.on('connected', (address, port) => {
+  console.log(`Conectado com sucesso a ${address}:${port}`);
+  // Mensagem de debug removida
+});
+
+// 4. O que fazer quando uma mensagem chegar
+client.on('message', (channel, tags, message, self) => {
+	// Ignora as próprias mensagens (se estivéssemos logados)
+	if(self) return;
+
+  // 'tags' contém informações do usuário, como 'display-name' (nome de exibição)
+  // 'message' é o texto da mensagem
+	addMessage(tags['display-name'], message);
+});
+
+// 5. O que fazer se for desconectado
+client.on('disconnected', (reason) => {
+  console.log(`Desconectado: ${reason}`);
+  // Mensagem de debug removida
+});
+
+// Mensagem de debug "Carregando..." removida
+
 </script>
 </body>
 </html>
+
