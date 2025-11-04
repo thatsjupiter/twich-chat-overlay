@@ -1,10 +1,9 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Twitch Chat Overlay</title>
-
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chat Twitch Overlay - nomundodejupiter</title>
 <style>
 body {
   margin: 0;
@@ -24,7 +23,6 @@ body {
   gap: 6px;
 }
 
-/* Caixas de mensagem */
 .msg {
   display: inline-flex;
   align-items: center;
@@ -48,7 +46,6 @@ body {
   margin-left: 3px;
 }
 
-/* Cores aleatórias */
 .color-1 { background: #ff7eb9; }
 .color-2 { background: #7afcff; }
 .color-3 { background: #feff9c; color: #333; }
@@ -65,38 +62,48 @@ body {
 }
 </style>
 </head>
-
 <body>
 <div id="chat"></div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/tmi.js/1.8.5/tmi.min.js"></script>
 <script>
+// Nome do canal da Twitch
+const CHANNEL = "nomundodejupiter";
 const chat = document.getElementById("chat");
 
-// CONFIGURAÇÃO — coloque seu nome de canal abaixo 👇
-const CHANNEL = "nomundodejupiter"; 
-
-const client = new tmi.Client({
-  channels: [CHANNEL]
-});
-
-client.connect();
-
-client.on("message", (channel, tags, message, self) => {
-  if (self) return;
-
+// Função para adicionar mensagens
+function addMessage(user, text) {
   const colorIndex = Math.floor(Math.random() * 5) + 1;
   const div = document.createElement("div");
   div.className = `msg color-${colorIndex}`;
-  div.innerHTML = `<span class="username">${tags["display-name"]}</span><span class="heart">❤️</span>: ${message}`;
-
+  div.innerHTML = `<span class="username">${user}</span><span class="heart">❤️</span>: ${text}`;
   chat.prepend(div);
 
   setTimeout(() => {
     div.style.animation = "fadeOut 0.5s forwards";
     setTimeout(() => div.remove(), 500);
-  }, 30000); // 30 segundos
-});
+  }, 30000);
+}
+
+// Conexão via relay (sem WebSocket direto)
+async function fetchChat() {
+  try {
+    const res = await fetch(`https://decapi.me/twitch/chatters/${CHANNEL}`);
+    const data = await res.text();
+    console.log("Conectado ao relay:", data);
+  } catch (e) {
+    console.error("Erro de conexão:", e);
+  }
+}
+
+// Conexão com EventSub relay
+const evtSource = new EventSource(`https://twitch-chat-relay.vercel.app/${CHANNEL}`);
+
+evtSource.onmessage = function(event) {
+  const msgData = JSON.parse(event.data);
+  addMessage(msgData.username, msgData.message);
+};
+
+fetchChat();
 </script>
 </body>
 </html>
